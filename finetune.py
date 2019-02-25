@@ -366,7 +366,7 @@ class PrunningFineTuner_AlexNet:
     plt.ylim((0,1.))
     plt.legend()
     plt.show()
-
+ 
     # print( "Finished. Going to fine tune the model a bit more")
     # self.train(optimizer, epoches = epoch_num)
     # torch.save(model.state_dict(), "model_prunned")
@@ -377,12 +377,16 @@ def get_args():
     parser.add_argument("--train", dest="train", action="store_true")
     parser.add_argument("--prune", dest="prune", action="store_true")
 
-    # data_dir = r"C:\Users\Thanh\code\repos\pytorch-pruning"
-    # data_dir = r"C:\Users\Thanh\code\repos\imagenet\small_imagenet"
-    data_dir = r"C:\Users\Thanh\code\repos\imagenet\imagenet"
-    # data_dir = r"C:\Users\Thanh\code\repos\imagenet\hymenoptera_data"
-    train_path =  data_dir + "\\train"
-    test_path = data_dir + "\\val"
+
+    data_dir = r"C:\Users\Thanh\code\repos\data" 
+
+    data_name = 'hymenoptera_data'
+    # data_name = 'dogs_cats'
+    # data_name = 'small_imagenet'
+    # data_name = 'imagenet'
+
+    train_path =  data_dir + '\\' + data_name + "\\train"
+    test_path = data_dir + '\\' + data_name + "\\val"
     parser.add_argument("--train_path", type = str, default = train_path)
     parser.add_argument("--test_path", type = str, default = test_path)
     parser.set_defaults(train=False)
