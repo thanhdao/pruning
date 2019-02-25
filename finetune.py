@@ -380,13 +380,14 @@ def get_args():
 
     data_dir = r"C:\Users\Thanh\code\repos\data" 
 
-    data_name = 'hymenoptera_data'
-    # data_name = 'dogs_cats'
+    # data_name = 'hymenoptera_data'
+    data_name = 'dogs_cats'
     # data_name = 'small_imagenet'
     # data_name = 'imagenet'
 
     train_path =  data_dir + '\\' + data_name + "\\train"
     test_path = data_dir + '\\' + data_name + "\\val"
+    
     parser.add_argument("--train_path", type = str, default = train_path)
     parser.add_argument("--test_path", type = str, default = test_path)
     parser.set_defaults(train=False)
