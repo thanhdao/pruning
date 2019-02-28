@@ -120,30 +120,16 @@ class FilterPrunner:
     # print('************************************* GRADE SHAPE: ', grad.shape)
     # print(grad.shape)
 
-
-
     activation_index = len(self.activations) - self.grad_index - 1
     activation = self.activations[activation_index]
     # print('********************** Activation: ', activation)
     # print('********************** grad: ', grad)
 
-    # temp = activation * grad
-
-    # print('Temp: ', temp.shape)
-    # val = torch.sum(temp, dim=0)
-    # val = torch.sum(val, dim=2)
-    # val = torch.sum(val, dim=1)
-    # print('Values shape: ', val.shape)
-    # print('Values data: ', val.data)
-    # print('\n \n \n\n\n\n\n\n')
-    # values = torch.sum((activation * grad), dim = 0).sum(dim=2).sum(dim=1).data
     values =torch.sum((activation * grad), dim=0, keepdim = True).sum(dim=2, keepdim = True).sum(dim=3,keepdim = True)[0, :, 0, 0].data
-      
-    
+         
     # Normalize the rank by the filter dimensions
     values = values / (activation.size(0) * activation.size(2) * activation.size(3))
       
-
     if activation_index not in self.filter_ranks:
       self.filter_ranks[activation_index] = torch.FloatTensor(activation.size(1)).zero_().cuda()
         
@@ -208,56 +194,83 @@ class PrunningFineTuner_AlexNet:
 
     self.model.train()
 
+  def accuracy(self,output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.cpu().eq(target.view(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.numpy()[0])
+            # print("***************** Accuracy top K:             ", res)
+            # res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
   def test(self):
     print(' PrunningFineTuner_AlexNet test')
     self.model.eval()
     correct = 0
     total = 0
+    correct1 = 0
+    correct5 = 0
 
     for i, (batch, label) in enumerate(self.test_data_loader):
-      # if i >= 100:
-      #   break
       batch = batch.cuda()
       # print('PrunningFineTuner_AlexNet test calculate output')
-      output = model(Variable(batch))
-      pred = output.data.max(1)[1]
-      # top5 = output.data.max
-      # print('***************************************** Top 5 accuracy: ', top5.shape)
-      # print('***************************************** Label: ', label)
+      output = self.model(Variable(batch))
+      # print('******************************* Output data: ',output.shape)
+      corr1, corr5 = self.accuracy(output, label, topk=(1, 5))
 
-      # print('****************** Label: ', label)
-      # print('******************* pred: ', pred)
+      pred = output.data.max(1)[1]
       correct += pred.cpu().eq(label).sum()
       # print('******************* Correct: ', correct)
       total += label.size(0)
+      correct1 += corr1
+      correct5 += corr5
      
-    print("Accuracy :", float(correct) / total)
     accuracy = float(correct) / total
     self.model.train()
-    return accuracy
+    print("Accuracy :", accuracy)
+    acc1 = float(correct1) / total
+    acc5 = float(correct5) / total 
+    print("Accuracy top1 and top5: ", acc1, acc5)
+    # return accuracy
+    return acc1, acc5
 
   def train(self, optimizer = None, epoches = 10):
     print(' PrunningFineTuner_AlexNet train')
-    accuracies = 0
+    accuracies1 = 0
+    accuracies5 = 0
     if optimizer is None:
       optimizer = \
-        optim.SGD(model.classifier.parameters(), 
+        optim.SGD(self.model.classifier.parameters(), 
           lr=0.0001, momentum=0.9)
 
     for i in range(epoches):
       print("Epoch: ", i)
       self.train_epoch(optimizer)
-      accuracies += self.test()
+      acc1, acc5 = self.test()
+      accuracies1 += acc1
+      accuracies5 += acc5
+
     print("Finished fine tuning.")
-    accuracy = accuracies / epoches
-    return accuracy
+    accuracy1 = accuracies1 / epoches
+    accuracy5 = accuracies5 / epoches
+    # return accuracy
+    return accuracy1, accuracy5
   
   def train_epoch(self, optimizer = None, rank_filters = False):
     print(' PrunningFineTuner_AlexNet train epoch')
     batch_num = 0
 
     for batch, label in self.train_data_loader:
-      if batch_num >= 1000:
+      if batch_num > 0:
        break
       print('************ batch number: ', batch_num)
       batch_num += 1
@@ -294,7 +307,7 @@ class PrunningFineTuner_AlexNet:
     return filters
 
   # ***************************** PRUNE HERE **********************************
-  def prune(self):
+  def prune(self, model_name):
     print(' PrunningFineTuner_AlexNet prune')
     #Get the accuracy before prunning
     self.test()
@@ -306,8 +319,9 @@ class PrunningFineTuner_AlexNet:
       param.requires_grad = True
 
     number_of_filters = self.total_num_filters()
-    print(' ****************************** PrunningFineTuner_AlexNet prune Number of filters: ', number_of_filters)
-    num_filters_to_prune_per_iteration = int(number_of_filters / 16)
+    print(' ****************************** PrunningFineTuner_AlexNet Total Number of filters: ', number_of_filters)
+    # num_filters_to_prune_per_iteration = int(number_of_filters / 16)
+    num_filters_to_prune_per_iteration = 1
     print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
     iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     epoch_num = 1
@@ -318,8 +332,10 @@ class PrunningFineTuner_AlexNet:
     print("Number of prunning iterations ", iterations)
 
     pruned_percents = []
-    pruned_accuracies = []
-    finetuned_accuracies = []
+    pruned_accuracies1 = []
+    pruned_accuracies5 = []
+    finetuned_accuracies1 = []
+    finetuned_accuracies5 = []
     # ***************************** RANKING FILTERS TO PRUNE **********************************
     for _ in range(iterations):
       print( " Ranking filters.. ")
@@ -349,80 +365,98 @@ class PrunningFineTuner_AlexNet:
       print( "Filters prunned", str(message))
 
       # ****************************** TEST ACCURACY AFTER PRUNING **********************************
-      pruned_accuracies.append(self.test())
-
+      pruned_acc1, pruned_acc5 = self.test()
+      pruned_accuracies1.append(pruned_acc1)
+      pruned_accuracies5.append(pruned_acc5)
       # ********************************** RETRAIN AFTER PRUNED ****************************************
       print( "*********************************Fine tuning to recover from prunning iteration.")
       optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
-      finetuned_accuracies.append(self.train(optimizer, epoches = epoch_num))
+      acc1, acc5 = self.train(optimizer, epoches = epoch_num)
+      finetuned_accuracies1.append(acc1)
+      finetuned_accuracies5.append(acc5)
+
+      print('******************* Pruned accuracies top 5: ', pruned_accuracies5)
+      print('******************* Finetuned accuracies top 5: ', finetuned_accuracies5)
 
     #**************** COMPARED GRAPH ***********************
     plt.title("Finetune vs Pruned Accuracy")
     plt.xlabel("Pruned percents")
     plt.ylabel("Validation Accuracy")
-    plt.plot(pruned_percents, pruned_accuracies, label='pruned')
-    plt.plot(pruned_percents, finetuned_accuracies, label='finetune')
-    plt.xlim((0,100))
-    plt.ylim((0,1.))
+    plt.plot(pruned_percents, pruned_accuracies5, label='pruned')
+    plt.plot(pruned_percents, finetuned_accuracies5, label='finetune')
+    # plt.xlim((0,100))
+    # plt.ylim((0,1.))
+    plt.xticks(np.arange(0, 100, 10.0))
+    plt.yticks(np.arange(0, 1, 0.1))
     plt.legend()
     plt.show()
  
     # print( "Finished. Going to fine tune the model a bit more")
     # self.train(optimizer, epoches = epoch_num)
-    # torch.save(model.state_dict(), "model_prunned")
+    pruned_model_name = model_name + "_prunned"
+    torch.save(model.state_dict(), pruned_model_name)
 
-def get_args():
+def get_args(data_path):
     print('*********** Get args **************** ')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", dest="train", action="store_true")
     parser.add_argument("--prune", dest="prune", action="store_true")
 
+    train_path =  data_path + "\\train"
+    test_path = data_path + "\\val"
 
-    data_dir = r"C:\Users\Thanh\code\repos\data" 
+    train_path = data_path + "/train"
+    test_path = data_path + "/val"
 
-    # data_name = 'hymenoptera_data'
-    data_name = 'dogs_cats'
-    # data_name = 'small_imagenet'
-    # data_name = 'imagenet'
-
-    train_path =  data_dir + '\\' + data_name + "\\train"
-    test_path = data_dir + '\\' + data_name + "\\val"
-    
     parser.add_argument("--train_path", type = str, default = train_path)
     parser.add_argument("--test_path", type = str, default = test_path)
     parser.set_defaults(train=False)
     parser.set_defaults(prune=False)
     args = parser.parse_args()
+
     return args
 
-if __name__ == '__main__':
+def main():
   print('************************ Main function')
-  args = get_args()
 
-  if args.train:
-    print('************************ Main function create model ')
+  data_dir = r"C:\Users\Thanh\code\repos\data"
+
+  data_list = ['hymenoptera_data','dogs_cats', 'small_imagenet', 'imagenet'] 
+  data_name = data_list[3]
+
+  model_name = data_name + '_model'
+
+  data_path = data_dir + '\\' + data_name
+
+  data_neptune = "/soc_local/data/pytorch/imagenet"
+
+  epoch_num = 10
+  # args = get_args(data_path)
+  args = get_args(data_neptune)
+
+  if args.prune:
+    print('************************ Main function load model for pruning')
+    model = torch.load(model_name).cuda()
+    fine_tuner = PrunningFineTuner_AlexNet(args.train_path, args.test_path, model)
+    print('Main function prunning')
+
+    begin = time.time()
+    fine_tuner.prune(model_name)
+    benchmark = time.time() - begin
+    print('Pruning take: ', benchmark)
+
+  else:
+    print('************************ Main function training ')
+
     model = ModifiedAlexNetModel().cuda()
-  elif args.prune:
-    print('************************ Main function load model ')
-    model = torch.load("model").cuda()
-
-  print('************************ Main function create fine tuner ')
-
-  fine_tuner = PrunningFineTuner_AlexNet(args.train_path, args.test_path, model)
-
-  epoch_num = 1
-
-  if args.train:
-    print('Main function training')
+    fine_tuner = PrunningFineTuner_AlexNet(args.train_path, args.test_path, model)
     begin = time.time()
     fine_tuner.train(epoches = epoch_num)
     benchmark = time.time() - begin
     print('Training take: ', benchmark)
-    torch.save(model, "model")
 
-  elif args.prune:
-    print('Main function prunning')
-    begin = time.time()
-    fine_tuner.prune()
-    benchmark = time.time() - begin
-    print('Prunning take: ', benchmark)
+    torch.save(model, model_name)
+
+if __name__ == '__main__':
+  main()

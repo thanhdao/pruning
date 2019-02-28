@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
+from flops_count import *
+
 # print("PyTorch Version: ",torch.__version__)
 # print("Torchvision Version: ",torchvision.__version__)
 
@@ -156,10 +158,10 @@ def main():
 
   #*********************************** INITIAL MODEL *****************************************
 
-  model_name = 'vgg' #[resnet, alexnet, vgg, squeezenet, densenet, inception]
+  model_name = 'resnet' #[resnet, alexnet, vgg, squeezenet, densenet, inception]
   num_classes = 2
-  batch_size = 8
-  num_epochs = 10
+  batch_size = 32
+  num_epochs = 1
   feature_extract = True # True: Update last layer, False update all model parameters
   # feature_extract = False
 
@@ -167,7 +169,7 @@ def main():
   print(model_ft)
 
   #******************************* LOAD DATA *******************************
-  data_dir = 'hymenoptera_data'
+  data_dir = '..\\data\\hymenoptera_data'
   data_transforms = {
       'train': transforms.Compose([
           transforms.RandomResizedCrop(input_size),
@@ -191,7 +193,8 @@ def main():
   dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 
   # Detect if we have a GPU available
-  device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+  # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+  device = torch.device('cpu')
 
   # Send the model to GPU
   model_ft = model_ft.to(device)
@@ -221,38 +224,46 @@ def main():
   criterion = nn.CrossEntropyLoss()
 
   # Train and evaluate
-  model_ft, hist = train_model(model_ft, device, dataloaders_dict, criterion, optimizer_ft, num_epochs=num_epochs, is_inception=(model_name=="inception"))
+  model_ft = add_flops_counting_methods(model_ft)
 
+  model_ft, hist = train_model(model_ft, device, dataloaders_dict, criterion, optimizer_ft, num_epochs=num_epochs, is_inception=(model_name=="inception"))
+  model_ft =  model_ft.cuda().train()
+  model_ft.start_flops_count()
+    
+
+  # _ =  model_ft(batch)
+    
+  print( model_ft.compute_average_flops_cost())
   #***************************** TRAINING FROM SCRATCH *******************************************
   # print('***************************** TRAINING FROM SCRATCH *******************************************')
-  print('***************************** FINETUNE WHOLE NETWORK *******************************************')
+  # print('***************************** FINETUNE WHOLE NETWORK *******************************************')
 
 
-  # Initialize the non-pretrained version of the model used for this run
-  scratch_model,_ = initialize_model(model_name, num_classes, feature_extract=False, use_pretrained=True)
-  scratch_model = scratch_model.to(device)
-  scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
-  scratch_criterion = nn.CrossEntropyLoss()
-  _,scratch_hist = train_model(scratch_model, device, dataloaders_dict, scratch_criterion, scratch_optimizer, num_epochs=num_epochs, is_inception=(model_name=="inception"))
+  # # Initialize the non-pretrained version of the model used for this run
+  # scratch_model,_ = initialize_model(model_name, num_classes, feature_extract=False, use_pretrained=True)
+  # scratch_model = scratch_model.to(device)
+  # scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
+  # scratch_criterion = nn.CrossEntropyLoss()
+  # _,scratch_hist = train_model(scratch_model, device, dataloaders_dict, scratch_criterion, scratch_optimizer, num_epochs=num_epochs, is_inception=(model_name=="inception"))
 
-  # Plot the training curves of validation accuracy vs. number
-  #  of training epochs for the transfer learning method and
-  #  the model trained from scratch
-  ohist = []
-  shist = []
+  # # Plot the training curves of validation accuracy vs. number
+  # #  of training epochs for the transfer learning method and
+  # #  the model trained from scratch
+  # ohist = []
+  # shist = []
 
-  ohist = [h.cpu().numpy() for h in hist]
-  shist = [h.cpu().numpy() for h in scratch_hist]
+  # ohist = [h.cpu().numpy() for h in hist]
+  # shist = [h.cpu().numpy() for h in scratch_hist]
 
-  plt.title("Validation Accuracy vs. Number of Training Epochs")
-  plt.xlabel("Training Epochs")
-  plt.ylabel("Validation Accuracy")
-  plt.plot(range(1,num_epochs+1),ohist,label="Pretrained")
-  plt.plot(range(1,num_epochs+1),shist,label="Scratch")
-  plt.ylim((0,1.))
-  plt.xticks(np.arange(1, num_epochs+1, 1.0))
-  plt.legend()
-  plt.show()
+  # plt.title("Validation Accuracy vs. Number of Training Epochs")
+  # plt.xlabel("Training Epochs")
+  # plt.ylabel("Validation Accuracy")
+  # plt.plot(range(1,num_epochs+1),ohist,label="Pretrained")
+  # plt.plot(range(1,num_epochs+1),shist,label="Scratch")
+  # plt.ylim((0,1.))
+  # plt.xticks(np.arange(1, num_epochs+1, 1.0))
+  # plt.legend()
+  # plt.show()
 
 if __name__ == '__main__':
   main()
