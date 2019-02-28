@@ -15,10 +15,18 @@ import os
 def loader(path, batch_size=32, num_workers=4, pin_memory=True):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     return data.DataLoader(
+        # datasets.ImageFolder(path,
+        #                      transforms.Compose([
+        #                          transforms.Resize(256),
+        #                          transforms.RandomResizedCrop(224),
+        #                          transforms.RandomHorizontalFlip(),
+        #                          transforms.ToTensor(),
+        #                          normalize,
+        #                      ])),
         datasets.ImageFolder(path,
                              transforms.Compose([
                                  transforms.Scale(256),
-                                 transforms.RandomResizedCrop(224),
+                                 transforms.RandomSizedCrop(224),
                                  transforms.RandomHorizontalFlip(),
                                  transforms.ToTensor(),
                                  normalize,
@@ -31,9 +39,16 @@ def loader(path, batch_size=32, num_workers=4, pin_memory=True):
 def test_loader(path, batch_size=32, num_workers=4, pin_memory=True):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     return data.DataLoader(
+        # datasets.ImageFolder(path,
+        #                      transforms.Compose([
+        #                          transforms.Resize(256),
+        #                          transforms.CenterCrop(224),
+        #                          transforms.ToTensor(),
+        #                          normalize,
+        #                      ])),
         datasets.ImageFolder(path,
                              transforms.Compose([
-                                 transforms.Resize(256),
+                                 transforms.Scale(256),
                                  transforms.CenterCrop(224),
                                  transforms.ToTensor(),
                                  normalize,
