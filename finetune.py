@@ -57,12 +57,12 @@ class ModifiedAlexNetModel(torch.nn.Module):
     #   )
 
     self.classifier = nn.Sequential(
-        # nn.Dropout(),
-        # nn.Linear(9216, 4096),
-        # nn.ReLU(inplace=True),
-        # nn.Dropout(),
-        # nn.Linear(4096, 4096),
-        # nn.ReLU(inplace=True),
+        nn.Dropout(),
+        nn.Linear(9216, 4096),
+        nn.ReLU(inplace=True),
+        nn.Dropout(),
+        nn.Linear(4096, 4096),
+        nn.ReLU(inplace=True),
         nn.Linear(4096, 1000))
     # in_features = 4096
     # out_features = 1000

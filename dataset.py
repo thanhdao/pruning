@@ -17,7 +17,7 @@ def loader(path, batch_size=32, num_workers=4, pin_memory=True):
     return data.DataLoader(
         datasets.ImageFolder(path,
                              transforms.Compose([
-                                 transforms.Resize(256),
+                                 transforms.Scale(256),
                                  transforms.RandomResizedCrop(224),
                                  transforms.RandomHorizontalFlip(),
                                  transforms.ToTensor(),
