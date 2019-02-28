@@ -56,17 +56,17 @@ class ModifiedAlexNetModel(torch.nn.Module):
     #     (6): Linear(in_features=4096, out_features=1000, bias=True)
     #   )
 
-    # self.classifier = nn.Sequential(
-    #     # nn.Dropout(),
-    #     # nn.Linear(9216, 4096),
-    #     # nn.ReLU(inplace=True),
-    #     # nn.Dropout(),
-    #     # nn.Linear(4096, 4096),
-    #     # nn.ReLU(inplace=True),
-    #     nn.Linear(4096, 2))
-    in_features = 4096
-    out_features = 1000
-    self.classifier[6] = nn.Linear(in_features, out_features)
+    self.classifier = nn.Sequential(
+        # nn.Dropout(),
+        # nn.Linear(9216, 4096),
+        # nn.ReLU(inplace=True),
+        # nn.Dropout(),
+        # nn.Linear(4096, 4096),
+        # nn.ReLU(inplace=True),
+        nn.Linear(4096, 1000))
+    # in_features = 4096
+    # out_features = 1000
+    # self.classifier[6] = nn.Linear(in_features, out_features)
 
   def forward(self, x):
     # print('ModifiedAlexNetModel forward')
