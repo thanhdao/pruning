@@ -225,7 +225,7 @@ class PrunningFineTuner_AlexNet:
       # print('PrunningFineTuner_AlexNet test calculate output')
       output = self.model(Variable(batch))
       # print('******************************* Output data: ',output.shape)
-      corr1, corr5 = self.accuracy(output, label, topk=(1, 5))
+      corr1, corr5 = self.accuracy(output.data, label, topk=(1, 5))
 
       pred = output.data.max(1)[1]
       correct += pred.cpu().eq(label).sum()
