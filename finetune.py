@@ -196,26 +196,26 @@ class PrunningFineTuner_AlexNet:
 
   def accuracy(self,output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
-    # with torch.no_grad():
-    maxk = max(topk)
-    batch_size = target.size(0)
+    with torch.no_grad():
+      maxk = max(topk)
+      batch_size = target.size(0)
 
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.cpu().eq(target.view(1, -1).expand_as(pred))
+      _, pred = output.topk(maxk, 1, True, True)
+      pred = pred.t()
+      correct = pred.cpu().eq(target.view(1, -1).expand_as(pred))
 
-    res = []
-    for k in topk:
-      correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-      res.append(correct_k.numpy()[0])
-            # print("***************** Accuracy top K:             ", res)
-            # res.append(correct_k.mul_(100.0 / batch_size))
-    return res
+      res = []
+      for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.numpy()[0])
+              # print("***************** Accuracy top K:             ", res)
+              # res.append(correct_k.mul_(100.0 / batch_size))
+      return res
 
   def test(self):
     print(' PrunningFineTuner_AlexNet test')
     self.model.eval()
-    correct = 0
+    # correct = 0
     total = 0
     correct1 = 0
     correct5 = 0
@@ -228,18 +228,19 @@ class PrunningFineTuner_AlexNet:
       corr1, corr5 = self.accuracy(output.data, label, topk=(1, 5))
 
       pred = output.data.max(1)[1]
-      correct += pred.cpu().eq(label).sum()
+      # correct += pred.cpu().eq(label).sum()
       # print('******************* Correct: ', correct)
       total += label.size(0)
       correct1 += corr1
       correct5 += corr5
      
-    accuracy = float(correct) / total
-    self.model.train()
-    print("Accuracy :", accuracy)
+    # accuracy = float(correct) / total
+    
+    # print("Accuracy :", accuracy)
     acc1 = float(correct1) / total
     acc5 = float(correct5) / total 
     print("Accuracy top1 and top5: ", acc1, acc5)
+    self.model.train()
     # return accuracy
     return acc1, acc5
 
@@ -270,8 +271,8 @@ class PrunningFineTuner_AlexNet:
     batch_num = 0
 
     for batch, label in self.train_data_loader:
-      if batch_num > 0:
-       break
+      # if batch_num > 0:
+      #  break
       print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
@@ -403,8 +404,8 @@ def get_args(data_path):
     parser.add_argument("--train", dest="train", action="store_true")
     parser.add_argument("--prune", dest="prune", action="store_true")
 
-    train_path =  data_path + "\\train"
-    test_path = data_path + "\\val"
+    # train_path =  data_path + "\\train"
+    # test_path = data_path + "\\val"
 
     train_path = data_path + "/train"
     test_path = data_path + "/val"
@@ -431,7 +432,7 @@ def main():
 
   data_neptune = "/soc_local/data/pytorch/imagenet"
 
-  epoch_num = 10
+  epoch_num = 1
   # args = get_args(data_path)
   args = get_args(data_neptune)
 
