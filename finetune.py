@@ -196,52 +196,75 @@ class PrunningFineTuner_AlexNet:
 
   def accuracy(self,output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
+    # begin = time.time()
     with torch.no_grad():
       maxk = max(topk)
       batch_size = target.size(0)
 
       _, pred = output.topk(maxk, 1, True, True)
       pred = pred.t()
-      correct = pred.cpu().eq(target.view(1, -1).expand_as(pred))
+      correct = pred.eq(target.view(1, -1).expand_as(pred))
 
       res = []
       for k in topk:
         correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-        res.append(correct_k.numpy()[0])
+        res.append(correct_k.cpu().numpy()[0])
               # print("***************** Accuracy top K:             ", res)
               # res.append(correct_k.mul_(100.0 / batch_size))
-      return res
+    # accuracy_time = time.time() - begin
+    # print('Accuracy time: ', accuracy_time)
+
+    return res
 
   def test(self):
     print(' PrunningFineTuner_AlexNet test')
+
     self.model.eval()
-    # correct = 0
     total = 0
     correct1 = 0
     correct5 = 0
 
-    for i, (batch, label) in enumerate(self.test_data_loader):
-      batch = batch.cuda()
-      # print('PrunningFineTuner_AlexNet test calculate output')
-      output = self.model(Variable(batch))
-      # print('******************************* Output data: ',output.shape)
-      corr1, corr5 = self.accuracy(output.data, label, topk=(1, 5))
 
-      pred = output.data.max(1)[1]
-      # correct += pred.cpu().eq(label).sum()
-      # print('******************* Correct: ', correct)
-      total += label.size(0)
-      correct1 += corr1
-      correct5 += corr5
+    with torch.no_grad():
+      begin = time.time()
+      for i, (batch, label) in enumerate(self.test_data_loader):
+        print('Test batch number: ', i)
+        batch = batch.cuda()
+        label = label.cuda()
+        
+        output = self.model(batch)
+        corr1, corr5 = self.accuracy(output.data, label, topk=(1, 5))
+
+        pred = output.data.max(1)[1]
+
+        total += label.size(0)
+        correct1 += corr1
+        correct5 += corr5
      
-    # accuracy = float(correct) / total
-    
-    # print("Accuracy :", accuracy)
     acc1 = float(correct1) / total
     acc5 = float(correct5) / total 
     print("Accuracy top1 and top5: ", acc1, acc5)
-    self.model.train()
-    # return accuracy
+    # self.model.train()
+    test_time = time.time() - begin
+    # print('Test time: ', test_time)
+
+
+        #     # measure elapsed time
+        #     batch_time.update(time.time() - end)
+        #     end = time.time()
+
+        #     if i % args.print_freq == 0:
+        #         print('Test: [{0}/{1}]\t'
+        #               'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+        #               'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+        #               'Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+        #               'Acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+        #                i, len(val_loader), batch_time=batch_time, loss=losses,
+        #                top1=top1, top5=top5))
+
+        # print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
+        #       .format(top1=top1, top5=top5))rese
+
     return acc1, acc5
 
   def train(self, optimizer = None, epoches = 10):
@@ -263,7 +286,6 @@ class PrunningFineTuner_AlexNet:
     print("Finished fine tuning.")
     accuracy1 = accuracies1 / epoches
     accuracy5 = accuracies5 / epoches
-    # return accuracy
     return accuracy1, accuracy5
   
   def train_epoch(self, optimizer = None, rank_filters = False):
@@ -271,8 +293,8 @@ class PrunningFineTuner_AlexNet:
     batch_num = 0
 
     for batch, label in self.train_data_loader:
-      # if batch_num > 0:
-      #  break
+      if batch_num > 100:
+       break
       print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
@@ -322,14 +344,13 @@ class PrunningFineTuner_AlexNet:
     number_of_filters = self.total_num_filters()
     print(' ****************************** PrunningFineTuner_AlexNet Total Number of filters: ', number_of_filters)
     # num_filters_to_prune_per_iteration = int(number_of_filters / 16)
+
+    # print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
+    # iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     num_filters_to_prune_per_iteration = 1
-    print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
-    iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
+    iterations = 1000
     epoch_num = 1
 
-    # iterations = int(iterations * 2.0 / 3)   
-    # print("Number of prunning iterations to reduce 67% filters", iterations)
-    # iterations = 2  
     print("Number of prunning iterations ", iterations)
 
     pruned_percents = []
@@ -338,7 +359,7 @@ class PrunningFineTuner_AlexNet:
     finetuned_accuracies1 = []
     finetuned_accuracies5 = []
     # ***************************** RANKING FILTERS TO PRUNE **********************************
-    for _ in range(iterations):
+    for iter in range(iterations):
       print( " Ranking filters.. ")
       prune_targets = self.get_candidates_to_prune(num_filters_to_prune_per_iteration)
       layers_prunned = {}
@@ -366,31 +387,35 @@ class PrunningFineTuner_AlexNet:
       print( "Filters prunned", str(message))
 
       # ****************************** TEST ACCURACY AFTER PRUNING **********************************
-      pruned_acc1, pruned_acc5 = self.test()
-      pruned_accuracies1.append(pruned_acc1)
-      pruned_accuracies5.append(pruned_acc5)
-      # ********************************** RETRAIN AFTER PRUNED ****************************************
-      print( "*********************************Fine tuning to recover from prunning iteration.")
-      optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
-      acc1, acc5 = self.train(optimizer, epoches = epoch_num)
-      finetuned_accuracies1.append(acc1)
-      finetuned_accuracies5.append(acc5)
+      if (iter % 50 == 0):
+        pruned_acc1, pruned_acc5 = self.test()
+        pruned_accuracies1.append(pruned_acc1)
+        pruned_accuracies5.append(pruned_acc5)
+        # ********************************** RETRAIN AFTER PRUNED ****************************************
+        print( "*********************************Fine tuning to recover from prunning iteration.")
+        optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+        acc1, acc5 = self.train(optimizer, epoches = epoch_num)
+        finetuned_accuracies1.append(acc1)
+        finetuned_accuracies5.append(acc5)
 
-      print('******************* Pruned accuracies top 5: ', pruned_accuracies5)
-      print('******************* Finetuned accuracies top 5: ', finetuned_accuracies5)
+        print('******************* Pruned accuracies top 5: ', pruned_accuracies5)
+        print('******************* Finetuned accuracies top 5: ', finetuned_accuracies5)
+
+    np.savetxt('pruned_top5.txt', pruned_accuracies5)
+    np.savetxt('finetuned_top5.txt', finetuned_accuracies5)
 
     #**************** COMPARED GRAPH ***********************
-    plt.title("Finetune vs Pruned Accuracy")
-    plt.xlabel("Pruned percents")
-    plt.ylabel("Validation Accuracy")
-    plt.plot(pruned_percents, pruned_accuracies5, label='pruned')
-    plt.plot(pruned_percents, finetuned_accuracies5, label='finetune')
-    # plt.xlim((0,100))
-    # plt.ylim((0,1.))
-    plt.xticks(np.arange(0, 100, 10.0))
-    plt.yticks(np.arange(0, 1, 0.1))
-    plt.legend()
-    plt.show()
+    # plt.title("Finetune vs Pruned Accuracy")
+    # plt.xlabel("Pruned percents")
+    # plt.ylabel("Validation Accuracy")
+    # plt.plot(pruned_percents, pruned_accuracies5, label='pruned')
+    # plt.plot(pruned_percents, finetuned_accuracies5, label='finetune')
+    # # plt.xlim((0,100))
+    # # plt.ylim((0,1.))
+    # plt.xticks(np.arange(0, 100, 10.0))
+    # plt.yticks(np.arange(0, 1, 0.1))
+    # plt.legend()
+    # plt.show()
  
     # print( "Finished. Going to fine tune the model a bit more")
     # self.train(optimizer, epoches = epoch_num)
@@ -433,8 +458,8 @@ def main():
   data_neptune = "/soc_local/data/pytorch/imagenet"
 
   epoch_num = 1
-  # args = get_args(data_path)
-  args = get_args(data_neptune)
+  args = get_args(data_path)
+  # args = get_args(data_neptune)
 
   if args.prune:
     print('************************ Main function load model for pruning')
