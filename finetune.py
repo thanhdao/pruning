@@ -391,7 +391,7 @@ class PrunningFineTuner_AlexNet:
         pruned_acc1, pruned_acc5 = self.test()
         pruned_accuracies1.append(pruned_acc1)
         pruned_accuracies5.append(pruned_acc5)
-        
+
       # ********************************** RETRAIN AFTER PRUNED ****************************************
       print( "*********************************Fine tuning to recover from prunning iteration.")
       optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
@@ -413,18 +413,18 @@ class PrunningFineTuner_AlexNet:
     pruned_model_path = model_path + "_prunned"
     torch.save(model.state_dict(), pruned_model_path)
 
-def update_model(self, optimizer=None, epoches=10):
-    print('Update model after pruning')
-    self.model.train()
-    if optimtimizer is None:
-      optimizer = optim.SGD(self.model.classifier.parameters(), 
-          lr=0.0001, momentum=0.9)
-        
-    for i in range(epoches):
-      print("Epoch: ", i)
-      self.train_epoch(optimizer)
+  def update_model(self, optimizer=None, epoches=10):
+      print('Update model after pruning')
+      self.model.train()
+      if optimtimizer is None:
+        optimizer = optim.SGD(self.model.classifier.parameters(), 
+            lr=0.0001, momentum=0.9)
+          
+      for i in range(epoches):
+        print("Epoch: ", i)
+        self.train_epoch(optimizer)
 
-    print("Finished fine tuning.")
+      print("Finished fine tuning.")
 
 def get_args(data_path):
     print('*********** Get args **************** ')
@@ -452,7 +452,7 @@ def main():
 
   data_dir = r"C:\Users\Thanh\code\repos\data"
 
-  data_list = ['hymenoptera_data','dogs_cats', 'small_imagenet', 'imagenet'] 
+  data_list = ['hymenoptera_data','dogs_cats', 'small_imagenet', 'imagenet']  
   data_name = data_list[3]
 
   # model_path = 'model' + '\\' + data_name + '_model'
