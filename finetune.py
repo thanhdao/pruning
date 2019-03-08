@@ -416,7 +416,7 @@ class PrunningFineTuner_AlexNet:
   def update_model(self, optimizer=None, epoches=10):
       print('Update model after pruning')
       self.model.train()
-      if optimtimizer is None:
+      if optitimizer is None:
         optimizer = optim.SGD(self.model.classifier.parameters(), 
             lr=0.0001, momentum=0.9)
           
