@@ -224,7 +224,6 @@ class PrunningFineTuner_AlexNet:
     correct1 = 0
     correct5 = 0
 
-
     with torch.no_grad():
       begin = time.time()
       for i, (batch, label) in enumerate(self.test_data_loader):
@@ -244,8 +243,9 @@ class PrunningFineTuner_AlexNet:
     acc1 = float(correct1) / total
     acc5 = float(correct5) / total 
     print("Accuracy top1 and top5: ", acc1, acc5)
-    # self.model.train()
+
     test_time = time.time() - begin
+    self.model.train()
     # print('Test time: ', test_time)
 
 
@@ -330,11 +330,11 @@ class PrunningFineTuner_AlexNet:
     return filters
 
   # ***************************** PRUNE HERE **********************************
-  def prune(self, model_name):
+  def prune(self, model_path):
     print(' PrunningFineTuner_AlexNet prune')
     #Get the accuracy before prunning
     self.test()
-    print(' ****************************** PrunningFineTuner_AlexNet prune before train')
+    # print(' ****************************** PrunningFineTuner_AlexNet prune before train')
     self.model.train()
 
     #Make sure all the layers are trainable
@@ -391,36 +391,40 @@ class PrunningFineTuner_AlexNet:
         pruned_acc1, pruned_acc5 = self.test()
         pruned_accuracies1.append(pruned_acc1)
         pruned_accuracies5.append(pruned_acc5)
-        # ********************************** RETRAIN AFTER PRUNED ****************************************
-        print( "*********************************Fine tuning to recover from prunning iteration.")
-        optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
-        acc1, acc5 = self.train(optimizer, epoches = epoch_num)
+        
+      # ********************************** RETRAIN AFTER PRUNED ****************************************
+      print( "*********************************Fine tuning to recover from prunning iteration.")
+      optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+      self.update_model(optimizer, epoches=epoch_num)
+      # acc1, acc5 = self.train(optimizer, epoches=epoch_num)
+      
+      if (iter % 50 == 0):
+        acc1, acc5 = self.test()
         finetuned_accuracies1.append(acc1)
         finetuned_accuracies5.append(acc5)
-
         print('******************* Pruned accuracies top 5: ', pruned_accuracies5)
         print('******************* Finetuned accuracies top 5: ', finetuned_accuracies5)
 
     np.savetxt('pruned_top5.txt', pruned_accuracies5)
     np.savetxt('finetuned_top5.txt', finetuned_accuracies5)
-
-    #**************** COMPARED GRAPH ***********************
-    # plt.title("Finetune vs Pruned Accuracy")
-    # plt.xlabel("Pruned percents")
-    # plt.ylabel("Validation Accuracy")
-    # plt.plot(pruned_percents, pruned_accuracies5, label='pruned')
-    # plt.plot(pruned_percents, finetuned_accuracies5, label='finetune')
-    # # plt.xlim((0,100))
-    # # plt.ylim((0,1.))
-    # plt.xticks(np.arange(0, 100, 10.0))
-    # plt.yticks(np.arange(0, 1, 0.1))
-    # plt.legend()
-    # plt.show()
  
     # print( "Finished. Going to fine tune the model a bit more")
     # self.train(optimizer, epoches = epoch_num)
-    pruned_model_name = model_name + "_prunned"
-    torch.save(model.state_dict(), pruned_model_name)
+    pruned_model_path = model_path + "_prunned"
+    torch.save(model.state_dict(), pruned_model_path)
+
+def update_model(self, optimizer=None, epoches=10):
+    print('Update model after pruning')
+    self.model.train()
+    if optimtimizer is None:
+      optimizer = optim.SGD(self.model.classifier.parameters(), 
+          lr=0.0001, momentum=0.9)
+        
+    for i in range(epoches):
+      print("Epoch: ", i)
+      self.train_epoch(optimizer)
+
+    print("Finished fine tuning.")
 
 def get_args(data_path):
     print('*********** Get args **************** ')
@@ -451,24 +455,26 @@ def main():
   data_list = ['hymenoptera_data','dogs_cats', 'small_imagenet', 'imagenet'] 
   data_name = data_list[3]
 
-  model_name = data_name + '_model'
+  # model_path = 'model' + '\\' + data_name + '_model'
+  model_path = 'model' + '/' + data_name + '_model'
 
   data_path = data_dir + '\\' + data_name
 
   data_neptune = "/soc_local/data/pytorch/imagenet"
 
   epoch_num = 1
-  args = get_args(data_path)
-  # args = get_args(data_neptune)
+  # args = get_args(data_path)
+  args = get_args(data_neptune)
 
   if args.prune:
     print('************************ Main function load model for pruning')
-    model = torch.load(model_name).cuda()
+
+    model = torch.load(model_path).cuda()
     fine_tuner = PrunningFineTuner_AlexNet(args.train_path, args.test_path, model)
     print('Main function prunning')
 
     begin = time.time()
-    fine_tuner.prune(model_name)
+    fine_tuner.prune(model_path)
     benchmark = time.time() - begin
     print('Pruning take: ', benchmark)
 
@@ -482,7 +488,7 @@ def main():
     benchmark = time.time() - begin
     print('Training take: ', benchmark)
 
-    torch.save(model, model_name)
+    torch.save(model, model_path)
 
 if __name__ == '__main__':
   main()
