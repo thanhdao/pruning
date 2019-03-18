@@ -348,7 +348,7 @@ class PrunningFineTuner_AlexNet:
     # print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
     # iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     num_filters_to_prune_per_iteration = 1
-    iterations = 1000
+    iterations = 1150
     epoch_num = 1
 
     print("Number of prunning iterations ", iterations)
