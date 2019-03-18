@@ -227,7 +227,7 @@ class PrunningFineTuner_AlexNet:
     with torch.no_grad():
       begin = time.time()
       for i, (batch, label) in enumerate(self.test_data_loader):
-        print('Test batch number: ', i)
+        #print('Test batch number: ', i)
         batch = batch.cuda()
         label = label.cuda()
         
@@ -295,7 +295,7 @@ class PrunningFineTuner_AlexNet:
     for batch, label in self.train_data_loader:
       if batch_num > 100:
        break
-      print('************ batch number: ', batch_num)
+      #print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
 
@@ -348,7 +348,7 @@ class PrunningFineTuner_AlexNet:
     # print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
     # iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     num_filters_to_prune_per_iteration = 1
-    iterations = 1150
+    iterations = 1100
     epoch_num = 1
 
     print("Number of prunning iterations ", iterations)
