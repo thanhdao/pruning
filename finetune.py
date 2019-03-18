@@ -469,7 +469,9 @@ def main():
   if args.prune:
     print('************************ Main function load model for pruning')
 
-    model = torch.load(model_path).cuda()
+    # model = torch.load(model_path).cuda()
+    model = ModifiedAlexNetModel().cuda()
+    model.load_state_dict(model_path)
     fine_tuner = PrunningFineTuner_AlexNet(args.train_path, args.test_path, model)
     print('Main function prunning')
 
