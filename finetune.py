@@ -274,7 +274,7 @@ class PrunningFineTuner_AlexNet:
     if optimizer is None:
       optimizer = \
         optim.SGD(self.model.classifier.parameters(), 
-          lr=0.0001, momentum=0.9)
+          lr=0.0001, momentum=0.9, weight_decay=0.0001)
 
     for i in range(epoches):
       print("Epoch: ", i)
@@ -394,7 +394,7 @@ class PrunningFineTuner_AlexNet:
 
       # ********************************** RETRAIN AFTER PRUNED ****************************************
       print( "*********************************Fine tuning to recover from prunning iteration.")
-      optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+      optimizer = optim.SGD(self.model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
       self.update_model(optimizer, epoches=epoch_num)
       # acc1, acc5 = self.train(optimizer, epoches=epoch_num)
       
@@ -418,7 +418,7 @@ class PrunningFineTuner_AlexNet:
       self.model.train()
       if optimizer is None:
         optimizer = optim.SGD(self.model.classifier.parameters(), 
-            lr=0.0001, momentum=0.9)
+            lr=0.0001, momentum=0.9, weight_decay=0.0001)
           
       for i in range(epoches):
         print("Epoch: ", i)
@@ -471,7 +471,7 @@ def main():
 
     # model = torch.load(model_path).cuda()
     model = ModifiedAlexNetModel().cuda()
-    model.load_state_dict(model_path)
+    model.load_state_dict(torch.load(model_path))
     fine_tuner = PrunningFineTuner_AlexNet(args.train_path, args.test_path, model)
     print('Main function prunning')
 
