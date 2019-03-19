@@ -27,9 +27,9 @@ finetuned_accuracies = [0.73554, 0.62758, 0.59692, 0.54154, 0.49476, 0.44424, 0.
 # print(len(percents))
 
 # TEST 20 PRUNED, 100 BATCH UPDATE, 
-pruned = np.loadtxt('pruned_top51.txt')
-finetuned = np.loadtxt('finetuned_top51.txt')
-percents = np.arange(0,100, 5)
+pruned = np.loadtxt('pruned_top52.txt')
+finetuned = np.loadtxt('finetuned_top52.txt')
+percents = np.arange(0,100, 4.6)
 
 plt.title("Finetune vs Pruned Accuracy")
 plt.xlabel("Pruned percents")
@@ -47,4 +47,5 @@ plt.ylim((0,1.))
 plt.xticks(np.arange(0, 100, 10.0))
 plt.yticks(np.arange(0, 1, 0.1))
 plt.legend()
+plt.grid(True)
 plt.show()
