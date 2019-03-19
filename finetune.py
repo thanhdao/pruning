@@ -57,10 +57,10 @@ class ModifiedAlexNetModel(torch.nn.Module):
     #   )
     # Classifier
     self.classifier = nn.Sequential(
-        nn.Dropout(p=0.5),
+        nn.Dropout(),
         nn.Linear(9216, 4096),
         nn.ReLU(inplace=True),
-        nn.Dropout(p=0.5),
+        nn.Dropout(),
         nn.Linear(4096, 4096),
         nn.ReLU(inplace=True),
         nn.Linear(4096, 1000))
@@ -295,7 +295,7 @@ class PrunningFineTuner_AlexNet:
     for batch, label in self.train_data_loader:
       if batch_num > 100:
        break
-      #print('************ batch number: ', batch_num)
+      print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
 
