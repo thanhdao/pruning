@@ -192,7 +192,7 @@ class PrunningFineTuner_AlexNet:
     print('PrunningFineTuner_AlexNet init filter prunner')
     self.prunner = FilterPrunner(self.model)
 
-    self.model.train()
+    # self.model.train()
 
   def accuracy(self,output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
@@ -245,7 +245,7 @@ class PrunningFineTuner_AlexNet:
     print("Accuracy top1 and top5: ", acc1, acc5)
 
     test_time = time.time() - begin
-    self.model.train()
+    # self.model.train()
     # print('Test time: ', test_time)
 
 
@@ -335,7 +335,7 @@ class PrunningFineTuner_AlexNet:
     #Get the accuracy before prunning
     self.test()
     # print(' ****************************** PrunningFineTuner_AlexNet prune before train')
-    self.model.train()
+    # self.model.train()
 
     #Make sure all the layers are trainable
     for param in self.model.features.parameters():
@@ -348,7 +348,7 @@ class PrunningFineTuner_AlexNet:
     # print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
     # iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     num_filters_to_prune_per_iteration = 1
-    iterations = 1100
+    iterations = 600
     epoch_num = 1
 
     print("Number of prunning iterations ", iterations)
@@ -415,7 +415,7 @@ class PrunningFineTuner_AlexNet:
 
   def update_model(self, optimizer=None, epoches=10):
       print('Update model after pruning')
-      self.model.train()
+      # self.model.train()
       if optimizer is None:
         optimizer = optim.SGD(self.model.classifier.parameters(), 
             lr=0.0001, momentum=0.9, weight_decay=0.0001)
