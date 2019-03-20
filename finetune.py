@@ -397,9 +397,9 @@ class PrunningFineTuner_AlexNet:
 
       # ********************************** RETRAIN AFTER PRUNED ****************************************
       print( "*********************************Fine tuning to recover from prunning iteration.")
-      optimizer = optim.SGD(self.model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
-      self.update_model(optimizer, epoches=epoch_num)
-      # acc1, acc5 = self.train(optimizer, epoches=epoch_num)
+      # optimizer = optim.SGD(self.model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
+      # self.update_model(optimizer, epoches=epoch_num)
+      # # acc1, acc5 = self.train(optimizer, epoches=epoch_num)
       
       if (iter % 50 == 0):
         acc1, acc5 = self.test()
