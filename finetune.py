@@ -97,19 +97,20 @@ class FilterPrunner:
     # print('FilterPrunner forward')
 
 
-    self.activations = [] # convolutional layers list for ranking
+    self.activations = [] # get activation after each layer
     self.gradients = []
     self.grad_index = 0
     self.activation_to_layer = {}
 
     activation_index = 0
     for layer, (name, module) in enumerate(self.model.features._modules.items()):
-        # print(' Layer, name, module: ', layer, name, module)
+        print(' Layer, name, module: ', layer, name, module)
+
         input = module(input)
         if isinstance(module, torch.nn.modules.conv.Conv2d):
           input.register_hook(self.compute_rank) # applied compute rank on grad everytime backward called
-          self.activations.append(input)
-          self.activation_to_layer[activation_index] = layer
+          self.activations.append(input) # activation after each layer
+          self.activation_to_layer[activation_index] = layer # get real order of layer in CNN network
           activation_index += 1
 
     return self.model.classifier(input.view(input.size(0), -1))
@@ -119,7 +120,7 @@ class FilterPrunner:
     # print('*********************** START RANKING FILER')
     # print('************************************* GRADE SHAPE: ', grad.shape)
     # print(grad.shape)
-
+    # print('filter_ranks: ', self.filter_ranks)
     activation_index = len(self.activations) - self.grad_index - 1
     activation = self.activations[activation_index]
     # print('********************** Activation: ', activation)
@@ -133,22 +134,66 @@ class FilterPrunner:
     if activation_index not in self.filter_ranks:
       self.filter_ranks[activation_index] = torch.FloatTensor(activation.size(1)).zero_().cuda()
         
-
+    # print('value size: ', values.shape)
     self.filter_ranks[activation_index] += values
     self.grad_index += 1
 
+    # print("activation_index: ", activation_index)
+    # print("activation: ", activation)
+    # print("values : ", values)
+
+  def rank_by_weight(self):
+      print('******************* Ranking by weights: ')
+
+      layer_index = 0
+      layer_weighs = []
+      filters_of_layers = []
+      self.activation_to_layer = {} # real index of layers in network
+
+      for param_tensor in self.model.state_dict():        
+        if ('features' in param_tensor) & ('weight' in param_tensor):
+          # print(param_tensor, "\t", self.model.state_dict()[param_tensor].size())
+          layer_weights= self.model.state_dict()[param_tensor]
+          # print(layer_weights.shape)
+          # print('layer weights size: ', layer_weights.size(0), layer_weights.size(1), layer_weights.size(2), layer_weights.size(3))
+
+          ranking_values = torch.sum(layer_weights ** 2, dim=1, keepdim = True).sum(dim=2, keepdim = True).sum(dim=3, keepdim = True)[:,0,0,0].data
+          # print('ranking values size: ', len(ranking_values))
+         
+
+          ranking_values = ranking_values / layer_weights.size(1) / layer_weights.size(2) / layer_weights.size(3)
+          self.filter_ranks[layer_index] = ranking_values
+
+          self.activation_to_layer[layer_index] = int(param_tensor.split('.')[1])
+
+          layer_index += 1
+      # for k, v in self.activation_to_layer.items():
+      #   print(k, v)
+
+
+
   def lowest_ranking_filters(self, num):
-    print('FilterPrunner lowest ranking filters')
+    # print('FilterPrunner lowest ranking filters')
 
     data = []
     for i in sorted(self.filter_ranks.keys()):
       for j in range(self.filter_ranks[i].size(0)):
         data.append((self.activation_to_layer[i], j, self.filter_ranks[i][j]))
 
+    # print('data: ', data)
+    # test_data = []
+    # for i in range(600):
+    #   x = nsmallest(1, data, itemgetter(2))[0]
+    #   test_data.append(nsmallest(num, data, itemgetter(2)))
+    #   print('x: ', x)
+    #   data.remove(x)
+    # print('test data: ', test_data)
+
+    # print('nsmallest weight: ', nsmallest(num, data, itemgetter(2)))
     return nsmallest(num, data, itemgetter(2))
 
   def normalize_ranks_per_layer(self):
-    print('FilterPrunner normalize ranks per layer')
+    # print('FilterPrunner normalize ranks per layer')
     for i in self.filter_ranks:
       v = torch.abs(self.filter_ranks[i])
       
@@ -158,13 +203,14 @@ class FilterPrunner:
       self.filter_ranks[i] = v.cpu()
 
   def get_prunning_plan(self, num_filters_to_prune):
-    print('FilterPrunner get_prunning plan')
+    # print('FilterPrunner get_prunning plan')
     filters_to_prune = self.lowest_ranking_filters(num_filters_to_prune)
 
     # After each of the k filters are prunned,
     # the filter index of the next filters change since the model is smaller.
     filters_to_prune_per_layer = {}
-    for (l, f, _) in filters_to_prune:
+    for (l, f, _) in filters_to_prune: # layer, filter, ranking value
+      # print('filter: ', l, f, _)
       if l not in filters_to_prune_per_layer:
         filters_to_prune_per_layer[l] = []
       filters_to_prune_per_layer[l].append(f)
@@ -227,7 +273,8 @@ class PrunningFineTuner_AlexNet:
     with torch.no_grad():
       begin = time.time()
       for i, (batch, label) in enumerate(self.test_data_loader):
-        #print('Test batch number: ', i)
+        if i % 50 == 0:
+          print('Test batch number: ', i)
         batch = batch.cuda()
         label = label.cuda()
         
@@ -289,17 +336,19 @@ class PrunningFineTuner_AlexNet:
     return accuracy1, accuracy5
   
   def train_epoch(self, optimizer = None, rank_filters = False):
-    print(' PrunningFineTuner_AlexNet train epoch')
+    # print(' PrunningFineTuner_AlexNet train epoch')
     batch_num = 0
 
     for batch, label in self.train_data_loader:
-      if batch_num > 1000:
+      if batch_num > 100:
        break
-      print('************ batch number: ', batch_num)
+      
+      if batch_num % 50 == 0:
+        print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
       if rank_filters:
-        print(' ********************** ranking filters **********************************')
+        # print(' ********************** ranking filters **********************************')
         break
 
   def train_batch(self, optimizer, batch, label, rank_filters):
@@ -314,16 +363,6 @@ class PrunningFineTuner_AlexNet:
       self.criterion(self.model(input), Variable(label)).backward()
       optimizer.step()
 
-  def get_candidates_to_prune(self, num_filters_to_prune):
-    print(' PrunningFineTuner_AlexNet get candidates to prune')
-    self.prunner.reset()
-
-    self.train_epoch(rank_filters = True)
-    
-    self.prunner.normalize_ranks_per_layer()
-
-    return self.prunner.get_prunning_plan(num_filters_to_prune)
-    
   def total_num_filters(self):
     print(' PrunningFineTuner_AlexNet total number filters')
     filters = 0
@@ -332,11 +371,32 @@ class PrunningFineTuner_AlexNet:
         filters = filters + module.out_channels
     return filters
 
+  def get_pruned_candidates_by_taylor(self, num_filters_to_prune):
+    print(' ****************** get pruned candidates by Taylor')
+    self.prunner.reset()
+
+    self.train_epoch(rank_filters = True)
+
+    # for key, value in self.prunner.filter_ranks.items():
+    #  print('filter ranks: ', key)
+    
+    self.prunner.normalize_ranks_per_layer()
+
+    # print(' pruning plan', self.prunner.get_prunning_plan(num_filters_to_prune))
+
+    return self.prunner.get_prunning_plan(num_filters_to_prune)
+
+  def get_pruned_candidates_by_weights(self, num_filters_to_prune):
+    self.prunner.reset()
+    self.prunner.rank_by_weight()
+    print('Pruned by minimum weights')
+    return self.prunner.get_prunning_plan(num_filters_to_prune)
+
   # ***************************** PRUNE HERE **********************************
   def prune(self, model_path):
     print(' PrunningFineTuner_AlexNet prune')
     #Get the accuracy before prunning
-    self.test()
+    # self.test()
     # print(' ****************************** PrunningFineTuner_AlexNet prune before train')
     # self.model.train()
 
@@ -345,16 +405,16 @@ class PrunningFineTuner_AlexNet:
       param.requires_grad = True
 
     number_of_filters = self.total_num_filters()
-    print(' ****************************** PrunningFineTuner_AlexNet Total Number of filters: ', number_of_filters)
-    # num_filters_to_prune_per_iteration = int(number_of_filters / 16)
+    # print(' ****************************** PrunningFineTuner_AlexNet Total Number of filters: ', number_of_filters)
+
 
     # print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
     # iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     num_filters_to_prune_per_iteration = 1
-    iterations = 600
+    iterations = 1100
     epoch_num = 1
 
-    print("Number of prunning iterations ", iterations)
+    # print("Number of prunning iterations ", iterations)
 
     pruned_percents = []
     pruned_accuracies1 = []
@@ -363,15 +423,18 @@ class PrunningFineTuner_AlexNet:
     finetuned_accuracies5 = []
     # ***************************** RANKING FILTERS TO PRUNE **********************************
     for iter in range(iterations):
-      print( " Ranking filters.. ")
-      prune_targets = self.get_candidates_to_prune(num_filters_to_prune_per_iteration)
+      # print( " Ranking filters.. ")
+      # prune_targets = self.get_pruned_candidates_by_taylor(num_filters_to_prune_per_iteration)
+      
+      prune_targets = self.get_pruned_candidates_by_weights(num_filters_to_prune_per_iteration)
+      print('prun targets: ', prune_targets)
       layers_prunned = {}
       for layer_index, filter_index in prune_targets:
         if layer_index not in layers_prunned:
           layers_prunned[layer_index] = 0
         layers_prunned[layer_index] = layers_prunned[layer_index] + 1 
 
-      print ("************************* Layers that will be prune", layers_prunned)
+      print ("************************* Number of filters of layers that will be pruned ", layers_prunned)
 
       #*********************************** START PRUNING *********************************
       print ("Prunning filters.. ")
@@ -395,7 +458,7 @@ class PrunningFineTuner_AlexNet:
         pruned_accuracies1.append(pruned_acc1)
         pruned_accuracies5.append(pruned_acc5)
 
-      # ********************************** RETRAIN AFTER PRUNED ****************************************
+      # ********************************** FINETUNE AFTER PRUNED ****************************************
       print( "*********************************Fine tuning to recover from prunning iteration.")
       optimizer = optim.SGD(self.model.parameters(), lr=0.0001, momentum=0.9, weight_decay=0.0001)
       self.update_model(optimizer, epoches=epoch_num)
@@ -436,9 +499,11 @@ def get_args(data_path):
     parser.add_argument("--train", dest="train", action="store_true")
     parser.add_argument("--prune", dest="prune", action="store_true")
 
+    # For windows
     # train_path =  data_path + "\\train"
     # test_path = data_path + "\\val"
 
+    # For linux
     train_path = data_path + "/train"
     test_path = data_path + "/val"
 
@@ -458,16 +523,16 @@ def main():
   data_list = ['hymenoptera_data','dogs_cats', 'small_imagenet', 'imagenet']  
   data_name = data_list[3]
 
-  # model_path = 'model' + '\\' + data_name + '_model'
-  model_path = 'model' + '/' + data_name + '_model'
+  # model_path = 'model' + '\\' + data_name + '_model' # For windows
+  model_path = 'model' + '/' + data_name + '_model' # For linux
 
   data_path = data_dir + '\\' + data_name
 
   data_neptune = "/soc_local/data/pytorch/imagenet"
 
   epoch_num = 1
-  # args = get_args(data_path)
-  args = get_args(data_neptune)
+  # args = get_args(data_path) # For Windows
+  args = get_args(data_neptune) # For Linux
 
   if args.prune:
     print('************************ Main function load model for pruning')
