@@ -283,8 +283,8 @@ class PrunningFineTuner_AlexNet:
     with torch.no_grad():
       begin = time.time()
       for i, (batch, label) in enumerate(self.test_data_loader):
-        if i % 50 == 0:
-          print('Test batch number: ', i)
+        # if i % 50 == 0:
+        print('Test batch number: ', i)
         batch = batch.cuda()
         label = label.cuda()
         
@@ -353,8 +353,8 @@ class PrunningFineTuner_AlexNet:
       if batch_num > 100:
        break
       
-      if batch_num % 50 == 0:
-        print('************ batch number: ', batch_num)
+      # if batch_num % 50 == 0:
+      print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
       if rank_filters:
