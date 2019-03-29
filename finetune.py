@@ -107,7 +107,7 @@ class FilterPrunner:
 
     activation_index = 0
     for layer, (name, module) in enumerate(self.model.features._modules.items()):
-        print(' Layer, name, module: ', layer, name, module)
+        #print(' Layer, name, module: ', layer, name, module)
 
         input = module(input)
         if isinstance(module, torch.nn.modules.conv.Conv2d):
