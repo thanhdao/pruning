@@ -30,6 +30,7 @@ class ModifiedAlexNetModel(torch.nn.Module):
     #   param.requires_grad = False
 
     # *************** ImageNet **********************
+
     # AlexNet(
     #   (features): Sequential(
     #     (0): Conv2d(3, 64, kernel_size=(11, 11), stride=(4, 4), padding=(2, 2))
@@ -55,6 +56,8 @@ class ModifiedAlexNetModel(torch.nn.Module):
     #     (5): ReLU(inplace)
     #     (6): Linear(in_features=4096, out_features=1000, bias=True)
     #   )
+
+
     # Classifier
     self.classifier = nn.Sequential(
         nn.Dropout(),
@@ -130,7 +133,7 @@ class FilterPrunner:
          
     # Normalize the rank by the filter dimensions
     values = values / (activation.size(0) * activation.size(2) * activation.size(3))
-      
+    values = torch.abs(values)
     if activation_index not in self.filter_ranks:
       self.filter_ranks[activation_index] = torch.FloatTensor(activation.size(1)).zero_().cuda()
         
@@ -194,13 +197,20 @@ class FilterPrunner:
 
   def normalize_ranks_per_layer(self):
     # print('FilterPrunner normalize ranks per layer')
-    for i in self.filter_ranks:
-      v = torch.abs(self.filter_ranks[i])
+    # for i in self.filter_ranks:
+    #   v = torch.abs(self.filter_ranks[i])
       
-      # v = v / np.sqrt(torch.sum(v * v))
-      temp = torch.sum(v * v).cpu().numpy()
-      v = v / np.sqrt(temp)
-      self.filter_ranks[i] = v.cpu()
+    #   # v = v / np.sqrt(torch.sum(v * v))
+    #   temp = torch.sum(v * v).cpu().numpy()
+    #   v = v / np.sqrt(temp)
+    #   self.filter_ranks[i] = v.cpu()
+    batch_size = 32
+    for i in self.filter_ranks:
+     v = self.filter_ranks[i] / batch_size
+     temp = torch.sum(v * v).cpu().numpy()
+     v = v / np.sqrt(temp)
+
+     self.filter_ranks[i] = v.cpu()
 
   def get_prunning_plan(self, num_filters_to_prune):
     # print('FilterPrunner get_prunning plan')

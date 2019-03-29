@@ -29,12 +29,14 @@ finetuned_accuracies = [0.73554, 0.62758, 0.59692, 0.54154, 0.49476, 0.44424, 0.
 # print(len(percents))
 
 # TEST 20 PRUNED, 100 BATCH UPDATE, 
-# pruned_minimum_weight = np.loadtxt('pruned_top5_minimum_weight.txt')
+#pruned_minimum_weight = np.loadtxt('pruned_top5_minimum_weight.txt')#
+finetuned_minimum_weight = np.loadtxt('finetuned_top5_minimum_weight.txt')
+finetuned_minimum_weight_1000 = np.loadtxt('finetuned_top5_minimum_weight_1000updates.txt')
 # pruned = np.loadtxt('pruned_top54.txt')
 finetuned_1000 = np.loadtxt('finetuned_top54.txt')
 finetuned_100 = np.loadtxt('finetuned_top53.txt')
 # percents = np.arange(0,52, 4.34)
-percents = np.arange(0,95, 4.34)
+percents = np.arange(0,91.3, 4.34)
 # percents = np.arange(0,100, 4.6)
 
 # plt.title("Finetune vs Pruned Accuracy")
@@ -42,13 +44,14 @@ plt.xlabel("Pruned percents")
 plt.ylabel("Validation Accuracy")
 
 
-
-
-# plt.plot(percents, pruned_minimum_weight, label='minimum weight')
 # plt.plot(percents, pruned, label='pruned Taylor 1000 updates')
-
-plt.plot(percents, finetuned_100, label='Taylor 100 updates')
 plt.plot(percents, finetuned_1000, label='Taylor 1000 updates')
+plt.plot(percents, finetuned_100, label='Taylor 100 updates')
+#plt.plot(percents, pruned_minimum_weight, label='minimum weight')
+plt.plot(percents, finetuned_minimum_weight_1000, label='minimum_weight_1000')
+plt.plot(percents, finetuned_minimum_weight, label='minimum weight')
+
+
 
 plt.xlim((0,100))
 plt.ylim((0,1.))
