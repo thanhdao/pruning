@@ -434,9 +434,9 @@ class PrunningFineTuner_AlexNet:
     # ***************************** RANKING FILTERS TO PRUNE **********************************
     for iter in range(iterations):
       # print( " Ranking filters.. ")
-      # prune_targets = self.get_pruned_candidates_by_taylor(num_filters_to_prune_per_iteration)
+      prune_targets = self.get_pruned_candidates_by_taylor(num_filters_to_prune_per_iteration)
       
-      prune_targets = self.get_pruned_candidates_by_weights(num_filters_to_prune_per_iteration)
+      #prune_targets = self.get_pruned_candidates_by_weights(num_filters_to_prune_per_iteration)
       print('prun targets: ', prune_targets)
       layers_prunned = {}
       for layer_index, filter_index in prune_targets:
