@@ -119,7 +119,7 @@ class FilterPrunner:
     return self.model.classifier(input.view(input.size(0), -1))
 
   def compute_rank(self, grad):   
-    # print('FilterPrunner compute rank')
+   # print('FilterPrunner compute rank')
     # print('*********************** START RANKING FILER')
     # print('************************************* GRADE SHAPE: ', grad.shape)
     # print(grad.shape)
@@ -139,11 +139,12 @@ class FilterPrunner:
         
     # print('value size: ', values.shape)
     self.filter_ranks[activation_index] += values
+    #print('filter rank i: ', activation_index, self.filter_ranks[activation_index])
     self.grad_index += 1
 
-    # print("activation_index: ", activation_index)
-    # print("activation: ", activation)
-    # print("values : ", values)
+   # print("activation_index: ", activation_index)
+   # print("activation: ", activation.shape)
+   # print("values : ", values.shape)
 
   def rank_by_weight(self):
       print('******************* Ranking by weights: ')
@@ -192,7 +193,7 @@ class FilterPrunner:
     #   data.remove(x)
     # print('test data: ', test_data)
 
-    # print('nsmallest weight: ', nsmallest(num, data, itemgetter(2)))
+    print('nsmallest weight: ', nsmallest(num, data, itemgetter(2)))
     return nsmallest(num, data, itemgetter(2))
 
   def normalize_ranks_per_layer(self):
@@ -204,7 +205,7 @@ class FilterPrunner:
     #   temp = torch.sum(v * v).cpu().numpy()
     #   v = v / np.sqrt(temp)
     #   self.filter_ranks[i] = v.cpu()
-    batch_size = 32
+    batch_size = 100
     for i in self.filter_ranks:
      v = self.filter_ranks[i] / batch_size
      temp = torch.sum(v * v).cpu().numpy()
@@ -284,7 +285,7 @@ class PrunningFineTuner_AlexNet:
       begin = time.time()
       for i, (batch, label) in enumerate(self.test_data_loader):
         # if i % 50 == 0:
-        print('Test batch number: ', i)
+       # print('Test batch number: ', i)
         batch = batch.cuda()
         label = label.cuda()
         
@@ -354,12 +355,12 @@ class PrunningFineTuner_AlexNet:
        break
       
       # if batch_num % 50 == 0:
-      print('************ batch number: ', batch_num)
+      #print('************ batch number: ', batch_num)
       batch_num += 1
       self.train_batch(optimizer, batch.cuda(), label.cuda(), rank_filters)
-      if rank_filters:
+      #if rank_filters:
         # print(' ********************** ranking filters **********************************')
-        break
+       # break
 
   def train_batch(self, optimizer, batch, label, rank_filters):
     # print(' PrunningFineTuner_AlexNet train batch ')
@@ -421,7 +422,7 @@ class PrunningFineTuner_AlexNet:
     # print(' ****************************** PrunningFineTuner_AlexNet prune Number of pruned filters each iteration: ', num_filters_to_prune_per_iteration)
     # iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration) - 1
     num_filters_to_prune_per_iteration = 1
-    iterations = 1100
+    iterations = 1101
     epoch_num = 1
 
     # print("Number of prunning iterations ", iterations)
