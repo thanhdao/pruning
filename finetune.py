@@ -205,7 +205,7 @@ class FilterPrunner:
     #   temp = torch.sum(v * v).cpu().numpy()
     #   v = v / np.sqrt(temp)
     #   self.filter_ranks[i] = v.cpu()
-    batch_size = 100
+    batch_size = 1000
     for i in self.filter_ranks:
      v = self.filter_ranks[i] / batch_size
      temp = torch.sum(v * v).cpu().numpy()
@@ -351,7 +351,7 @@ class PrunningFineTuner_AlexNet:
     batch_num = 0
 
     for batch, label in self.train_data_loader:
-      if batch_num > 100:
+      if batch_num > 1000:
        break
       
       # if batch_num % 50 == 0:
