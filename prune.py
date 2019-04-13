@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import Variable
 from torchvision import models
-import cv2
+# import cv2
 import sys
 import numpy as np
 
@@ -11,7 +11,7 @@ def replace_layers(model, i, indexes, layers):
     return layers[indexes.index(i)]
   return model[i]
 
-def prune_alexnet_conv_layer(model, layer_index, filter_index):
+def prune_conv_layer(model, layer_index, filter_index):
   # print('prune prune_alexnet_conv_layer ')
   # print(model.features._modules.items().type())
   # _, conv = model.features._modules.items()[layer_index]
@@ -44,14 +44,14 @@ def prune_alexnet_conv_layer(model, layer_index, filter_index):
 
   new_weights[: filter_index, :, :, :] = old_weights[: filter_index, :, :, :]
   new_weights[filter_index : , :, :, :] = old_weights[filter_index + 1 :, :, :, :]
-  new_conv.weight.data = torch.from_numpy(new_weights).cuda()
+  new_conv.weight.data = torch.from_numpy(new_weights)
 
   bias_numpy = conv.bias.data.cpu().numpy()
 
   bias = np.zeros(shape = (bias_numpy.shape[0] - 1), dtype = np.float32)
   bias[:filter_index] = bias_numpy[:filter_index]
   bias[filter_index : ] = bias_numpy[filter_index + 1 :]
-  new_conv.bias.data = torch.from_numpy(bias).cuda()
+  new_conv.bias.data = torch.from_numpy(bias)
 
   if not next_conv is None:
     next_new_conv = \
@@ -69,7 +69,7 @@ def prune_alexnet_conv_layer(model, layer_index, filter_index):
 
     new_weights[:, : filter_index, :, :] = old_weights[:, : filter_index, :, :]
     new_weights[:, filter_index : , :, :] = old_weights[:, filter_index + 1 :, :, :]
-    next_new_conv.weight.data = torch.from_numpy(new_weights).cuda()
+    next_new_conv.weight.data = torch.from_numpy(new_weights)
 
     next_new_conv.bias.data = next_conv.bias.data
 
@@ -116,7 +116,7 @@ def prune_alexnet_conv_layer(model, layer_index, filter_index):
      
      new_linear_layer.bias.data = old_linear_layer.bias.data
 
-     new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
+     new_linear_layer.weight.data = torch.from_numpy(new_weights)
 
      classifier = torch.nn.Sequential(
       *(replace_layers(model.classifier, i, [layer_index], \
@@ -132,8 +132,18 @@ def prune_alexnet_conv_layer(model, layer_index, filter_index):
 if __name__ == '__main__':
   print('Main function prune ')
   model = models.alexnet(pretrained=True)
-  model.train()
+  # model.train()
+  # print(model)
+  layers = [0,3,6,8,10]
+  filters = [64, 192, 384, 256, 256]
 
-  t0 = time.time()
-  model = prune_conv_layer(model, 18, 10)
-  print( "The prunning took", time.time() - t0)
+  for i in range(5):
+    for j in range(filters[i]):
+      print('prune layer: %d, filter: %d' %(i, j))
+      model = prune_conv_layer(model, layers[i], filters[i] - 1 - j)
+  # t0 = time.time()
+  # model = prune_conv_layer(model, 18, 10)
+  # print( "The prunning took", time.time() - t0)
+
+
+
